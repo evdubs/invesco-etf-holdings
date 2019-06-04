@@ -79,7 +79,6 @@
                                          (set! insert-failure-counter (add1 insert-failure-counter)))])
               (for-each (λ (row)
                           (set! insert-counter (add1 insert-counter))
-                          (displayln row)
                           (start-transaction dbc)
                           (query-exec dbc "
 insert into invesco.etf_holding
