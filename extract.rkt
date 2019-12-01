@@ -1,24 +1,17 @@
 #lang racket/base
 
-(require net/url
+(require gregor
+         net/url
          racket/file
          racket/list
          racket/port
-         srfi/19 ; Time Data Types and Procedures
          tasks
          threading)
 
 (define (download-etf-holdings symbol)
-  (make-directory* (string-append "/var/tmp/invesco/etf-holdings/" (date->string (current-date) "~1")))
-  (call-with-output-file (string-append "/var/tmp/invesco/etf-holdings/" (date->string (current-date) "~1") "/" symbol ".xls")
-    (λ (out) (~> (string-append "https://www.invesco.com/portal/site/us/template.BINARYPORTLET/financial-professional/etfs/holdings/resource.process/"
-                     "?javax.portlet.tpst=72e337bf3b31ef1a015fe531524e2ca0"
-                     "&javax.portlet.rid_72e337bf3b31ef1a015fe531524e2ca0=excelHoldings"
-                     "&javax.portlet.rcl_72e337bf3b31ef1a015fe531524e2ca0=cacheLevelPage"
-                     "&javax.portlet.begCacheTok=com.vignette.cachetoken"
-                     "&javax.portlet.endCacheTok=com.vignette.cachetoken"
-                     "&ts=" (date->string (current-date) "~4")
-                     "&javax.portlet.prp_72e337bf3b31ef1a015fe531524e2ca0_ticker=" symbol)
+  (make-directory* (string-append "/var/tmp/invesco/etf-holdings/" (~t (today) "yyyy-MM-dd")))
+  (call-with-output-file (string-append "/var/tmp/invesco/etf-holdings/" (~t (today) "yyyy-MM-dd") "/" symbol ".csv")
+    (λ (out) (~> (string-append "https://www.invesco.com/us/financial-products/etfs/holdings/main/holdings/0?ticker=" symbol "&action=download")
                  (string->url _)
                  (get-pure-port _)
                  (copy-port _ out)))

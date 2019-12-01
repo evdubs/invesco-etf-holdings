@@ -1,11 +1,11 @@
 #lang racket/base
 
 (require db
+         gregor
          racket/cmdline
+         racket/list
          racket/sequence
-         racket/string
-         racket/system
-         srfi/19) ; Time Data Types and Procedures
+         racket/string)
 
 (struct etf-component
   (fund-ticker
@@ -21,9 +21,7 @@
 
 (define base-folder (make-parameter "/var/tmp/invesco/etf-holdings"))
 
-(define convert-xls (make-parameter #f))
-
-(define folder-date (make-parameter (current-date)))
+(define folder-date (make-parameter (today)))
 
 (define db-user (make-parameter "user"))
 
@@ -37,11 +35,9 @@
  [("-b" "--base-folder") folder
                          "SPDR ETF Holdings base folder. Defaults to /var/tmp/invesco/etf-holdings"
                          (base-folder folder)]
- [("-c" "--convert-xls") "Convert XLS documents to CSV for handling. This requires libreoffice to be installed"
-                         (convert-xls #t)]
  [("-d" "--folder-date") date
                          "Invesco ETF Holdings folder date. Defaults to today"
-                         (folder-date (string->date date "~Y-~m-~d"))]
+                         (folder-date (iso8601->date date))]
  [("-n" "--db-name") name
                      "Database name. Defaults to 'local'"
                      (db-name name)]
@@ -54,26 +50,27 @@
 
 (define dbc (postgresql-connect #:user (db-user) #:database (db-name) #:password (db-pass)))
 
-(parameterize ([current-directory (string-append (base-folder) "/" (date->string (folder-date) "~1") "/")])
-  (cond [(convert-xls)
-         (for ([p (sequence-filter (λ (p) (string-contains? (path->string p) ".xls")) (in-directory))])
-           (system (string-append "libreoffice --headless --convert-to csv --outdir " (path->string (current-directory)) " " (path->string p))))])
+(parameterize ([current-directory (string-append (base-folder) "/" (~t (folder-date) "yyyy-MM-dd") "/")])
   (for ([p (sequence-filter (λ (p) (string-contains? (path->string p) ".csv")) (in-directory))])
-    (let ([file-name (string-append (base-folder) "/" (date->string (folder-date) "~1") "/" (path->string p))]
+    (let ([file-name (string-append (base-folder) "/" (~t (folder-date) "yyyy-MM-dd") "/" (path->string p))]
           [ticker-symbol (string-replace (path->string p) ".csv" "")])
       (call-with-input-file file-name
         (λ (in)
           (displayln file-name)
           (let* ([sheet-values (sequence->list (in-lines in))]
-                 [rows (map (λ (r) (apply etf-component (regexp-split #rx"," r))) sheet-values)]
-                 [filtered-rows (filter (λ (r) (not (equal? "FundTicker" (etf-component-fund-ticker r)))) rows)])
+                 [remove-header (filter (λ (r) (not (string-contains? r "FundTicker"))) sheet-values)]
+                 [filtered-rows
+                  (map (λ (r)
+                         (apply etf-component
+                                (drop (regexp-match #px"([A-Z]+),([0-9A-Z]+),([A-Z/]+) ,\"?([0-9,]+)\"?,\"([0-9,\\.]+)\",([0-9\\.]+),(.*?),([a-zA-Z ]+),([0-9/]+)"
+                                                    r) 1))) remove-header)])
             (define insert-counter 0)
             (define insert-success-counter 0)
             (define insert-failure-counter 0)
             (with-handlers ([exn:fail? (λ (e) (displayln (string-append "Failed to process "
                                                                         ticker-symbol
                                                                         " for date "
-                                                                        (date->string (folder-date) "~1")))
+                                                                        (~t (folder-date) "yyyy-MM-dd")))
                                          (displayln ((error-value->string-handler) e 1000))
                                          (rollback-transaction dbc)
                                          (set! insert-failure-counter (add1 insert-failure-counter)))])
@@ -99,11 +96,11 @@ insert into invesco.etf_holding
 ) on conflict (etf_symbol, date, component_symbol) do nothing;
 "
                                       ticker-symbol
-                                      (date->string (folder-date) "~1")
+                                      (~t (folder-date) "yyyy-MM-dd")
                                       (string-replace (string-trim (etf-component-holdings-ticker row)) "/" ".")
                                       (etf-component-weight row)
                                       (etf-component-sector row)
-                                      (etf-component-shares row))
+                                      (string-replace (etf-component-shares row) "," ""))
                           (commit-transaction dbc)
                           (set! insert-success-counter (add1 insert-success-counter))) filtered-rows))
             (displayln (string-append "Attempted to insert " (number->string insert-counter) " rows. "
