@@ -62,7 +62,7 @@
                  [filtered-rows
                   (map (λ (r)
                          (apply etf-component
-                                (drop (regexp-match #px"([A-Z]+),([0-9A-Z]+),([A-Z/]+) ,\"?([0-9,]+)\"?,\"([0-9,\\.]+)\",([0-9\\.]+),(.*?),([a-zA-Z ]+),([0-9/]+)"
+                                (drop (regexp-match #px"([A-Z]+),([0-9A-Z]+),([A-Z/]+) ,\"?([0-9,]+)\"?,\"?([0-9,\\.]+)\"?,([0-9\\.]+),(.*?),([a-zA-Z ]+),([0-9/]+)"
                                                     r) 1))) remove-header)])
             (define insert-counter 0)
             (define insert-success-counter 0)
