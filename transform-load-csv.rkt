@@ -58,7 +58,8 @@
         (λ (in)
           (displayln file-name)
           (let* ([sheet-values (sequence->list (in-lines in))]
-                 [remove-header (filter (λ (r) (not (string-contains? r "FundTicker"))) sheet-values)]
+                 [remove-header (filter (λ (r) (not (or (string-contains? r "FundTicker")
+                                                        (string-contains? r "Fund Ticker")))) sheet-values)]
                  [filtered-rows
                   (map (λ (r)
                          (apply etf-component
