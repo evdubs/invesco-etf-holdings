@@ -1,4 +1,4 @@
-### As of 2020-02-16, ADRA, ADRD, and ADRU were delisted. This ETL tool is less valuable now that there is less coverage of the ADR space. 
+#### As of 2020-02-16, ADRA, ADRD, and ADRU were delisted. This ETL tool is less valuable now that there is less coverage of the ADR space. 
 
 # invesco-etf-holdings
 These Racket programs will download the Invesco ADR ETF holdings XLS documents and insert the holding data into a PostgreSQL database. 
