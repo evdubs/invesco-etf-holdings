@@ -1,3 +1,5 @@
+CREATE SCHEMA invesco;
+
 CREATE TYPE invesco.sector AS ENUM
    ('Communication Services',
     'Consumer Discretionary',
